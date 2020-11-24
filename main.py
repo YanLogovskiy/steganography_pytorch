@@ -62,9 +62,9 @@ if opt.dataset in ['imagenet', 'folder', 'lfw']:
                                    transforms.ToTensor(),
                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                                ]))
-    nc=3
+    nc = 3
 elif opt.dataset == 'lsun':
-    classes = [ c + '_train' for c in opt.classes.split(',')]
+    classes = [c + '_train' for c in opt.classes.split(',')]
     dataset = dset.LSUN(root=opt.dataroot, classes=classes,
                         transform=transforms.Compose([
                             transforms.Resize(opt.imageSize),
@@ -72,7 +72,7 @@ elif opt.dataset == 'lsun':
                             transforms.ToTensor(),
                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                         ]))
-    nc=3
+    nc = 3
 elif opt.dataset == 'cifar10':
     dataset = dset.CIFAR10(root=opt.dataroot, download=True,
                            transform=transforms.Compose([
@@ -80,21 +80,21 @@ elif opt.dataset == 'cifar10':
                                transforms.ToTensor(),
                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                            ]))
-    nc=3
+    nc = 3
 
 elif opt.dataset == 'mnist':
-        dataset = dset.MNIST(root=opt.dataroot, download=True,
-                           transform=transforms.Compose([
-                               transforms.Resize(opt.imageSize),
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.5,), (0.5,)),
-                           ]))
-        nc=1
+    dataset = dset.MNIST(root=opt.dataroot, download=True,
+                         transform=transforms.Compose([
+                             transforms.Resize(opt.imageSize),
+                             transforms.ToTensor(),
+                             transforms.Normalize((0.5,), (0.5,)),
+                         ]))
+    nc = 1
 
 elif opt.dataset == 'fake':
     dataset = dset.FakeData(image_size=(3, opt.imageSize, opt.imageSize),
                             transform=transforms.ToTensor())
-    nc=3
+    nc = 3
 
 assert dataset
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
@@ -123,7 +123,7 @@ class Generator(nn.Module):
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(     nz, ngf * 8, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
@@ -135,11 +135,11 @@ class Generator(nn.Module):
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(ngf * 2,     ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
@@ -198,6 +198,7 @@ netD.apply(weights_init)
 if opt.netD != '':
     netD.load_state_dict(torch.load(opt.netD))
 print(netD)
+
 
 class Steganalyser(nn.Module):
     def __init__(self, ngpu):
@@ -300,7 +301,7 @@ for epoch in range(opt.niter):
         ############################
         # (2) Update G network: maximize a * log(D(G(z))) + (1 - a) * log(1 - S(Stego(G(z)))) + (1 - a) * log(S(G(z)))
         ###########################
-        #compete Discriminator
+        # compete Discriminator
         netG.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
         output = netD(fake)
@@ -308,7 +309,7 @@ for epoch in range(opt.niter):
         errG_D.backward()
         D_G_z2 = output.mean().item()
 
-        #compete Steganalyser
+        # compete Steganalyser
         label.fill_(fake_label)
         output = netS(Stego(cover_img=fake, message=None))
         errG_S_msg = criterion(output, label)
@@ -329,12 +330,12 @@ for epoch in range(opt.niter):
                  errD.item(), errG.item(), errS.item(), D_x, D_G_z1, D_G_z2, S_G_z_1, S_G_z_2, S_S_G_z_1, S_S_G_z_2))
         if i % 100 == 0:
             vutils.save_image(real_cpu,
-                    '%s/real_samples.png' % opt.outf,
-                    normalize=True)
+                              '%s/real_samples.png' % opt.outf,
+                              normalize=True)
             fake = netG(fixed_noise)
             vutils.save_image(fake.detach(),
-                    '%s/fake_samples_epoch_%03d.png' % (opt.outf, epoch),
-                    normalize=True)
+                              '%s/fake_samples_epoch_%03d.png' % (opt.outf, epoch),
+                              normalize=True)
 
     # do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
