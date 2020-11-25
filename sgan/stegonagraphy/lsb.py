@@ -1,9 +1,7 @@
 import numpy as np
 import random
 
-
 # TODO: move to pytorch
-
 def sigmoid(X):
     return 1 / (1 + np.exp(-X))
 
@@ -15,7 +13,6 @@ def p_m(m, z):
 
 
 # TODO: optimize
-
 def S_m(m, x):
     if m == 1 and x >= -1 and x < -1 + (2 ** -7):
         ksi = (2 ** -7)
