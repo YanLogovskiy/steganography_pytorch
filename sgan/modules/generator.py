@@ -18,7 +18,7 @@ class Generator(nn.Module):
         structure = structure or [512, 256, 128, 64, out_channels]
         if base_block is None:
             base_block = partial(
-                TransposedPreactivation, activation_module=nn.LeakyReLU(), **convolution_params, bias=bias
+                TransposedPreactivation, activation_module=nn.LeakyReLU, **convolution_params, bias=bias
             )
 
         # TODO: remove hardcode?

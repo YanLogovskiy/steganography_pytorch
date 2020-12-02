@@ -18,7 +18,7 @@ class Discriminator(nn.Module):
             def base_block(in_c, out_c):
                 # TODO: replace by stride convolutions
                 return nn.Sequential(
-                    ForwardPreactivation(in_c, out_c, activation_module=nn.LeakyReLU(),
+                    ForwardPreactivation(in_c, out_c, activation_module=nn.LeakyReLU,
                                          **convolution_params, bias=bias),
                     nn.AvgPool2d(2, 2))
 
