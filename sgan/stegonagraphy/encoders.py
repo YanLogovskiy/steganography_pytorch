@@ -1,19 +1,43 @@
 import numpy as np
+import random
+from itertools import product
+from typing import Sequence, List
 
 
-def generate_random_pairs(low, high, length, seed=None):
-    if seed is None:
-        pass
-    else:
-        pass
+def generate_random_key(image, length):
+    h, w = image.shape[1:]
+    pool = list(product(range(h), range(w)))
+    return random.sample(pool, length)
 
 
-def bits_to_bytes():
-    pass
+def bytes_to_bits(sequence: Sequence):
+    bits = []
+    # looks ugly :(
+    for ch in sequence:
+        str_bits = bin(ord(ch)).lstrip('0b')
+        while len(str_bits) != 8:
+            str_bits = '0' + str_bits
+        bits.extend(list(map(int, str_bits)))
+
+    return bits
 
 
-def bytes_to_bits():
-    pass
+def bits_to_bytes(sequence: List[int]):
+    chunks = [sequence[i:i + 8] for i in range(0, len(sequence), 8)]
+    # pad if necessary
+    while len(chunks[-1]) != 8:
+        chunks[-1].append(0)
+
+    print(chunks)
+
+    def process_single(chunk):
+        result = 0
+        for i, x in enumerate(reversed(chunk)):
+            result += x * 2 ** i
+        return chr(result)
+
+    message = [process_single(ch) for ch in chunks]
+    return message
 
 
 class LeastSignificantBitEncoder:
@@ -59,6 +83,30 @@ class PlusMinusNumpyEncoder(LeastSignificantBitEncoder):
         if self.convert_to_bytes:
             message = bits_to_bytes(message)
         return message
+
+
+class SigmoidNumpyEncoder(LeastSignificantBitEncoder):
+    def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
+        pass
+
+    def decode(self, container: np.ndarray, key: np.ndarray):
+        pass
+
+
+class PlusMinusPytorchEncoder(LeastSignificantBitEncoder):
+    def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
+        pass
+
+    def decode(self, container: np.ndarray, key: np.ndarray):
+        pass
+
+
+class SigmoidPytorchEncoder(LeastSignificantBitEncoder):
+    def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
+        pass
+
+    def decode(self, container: np.ndarray, key: np.ndarray):
+        pass
 
 # # TODO: move to pytorch
 # def sigmoid(X):
