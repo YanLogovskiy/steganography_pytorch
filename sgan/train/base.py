@@ -35,8 +35,8 @@ def process_batch(inputs: torch.Tensor, target: torch.Tensor, model: nn.Module,
     return to_numpy(loss)
 
 
-def generate_noise(batch_size, n_channels):
-    return torch.randn(batch_size, n_channels, 1, 1)
+def generate_noise(batch_size, n_channels, device):
+    return torch.randn(batch_size, n_channels, 1, 1, device=device)
 
 
 def inference_step(inputs, model):

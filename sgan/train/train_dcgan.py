@@ -3,6 +3,7 @@ import torch
 import argparse
 import numpy as np
 
+from tqdm import tqdm
 from pathlib import Path
 from torch.optim import Adam
 from torch.nn import functional as F
@@ -22,7 +23,8 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch,
     criterion = F.binary_cross_entropy_with_logits
 
     callbacks = callbacks or []
-    for epoch in range(n_epoch):
+    print(1)
+    for epoch in tqdm(range(n_epoch)):
         generator_losses = []
         discriminator_losses_on_real = []
         discriminator_losses_on_fake = []
@@ -36,7 +38,7 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch,
             real_loss = process_batch(real_batch, real_target, discriminator, criterion)
 
             # train discriminator on fake
-            noise = generate_noise(batch_size, n_noise_channels)
+            noise = generate_noise(batch_size, n_noise_channels, device)
             fake_batch = generator(noise)
             target_for_discriminator = torch.zeros(batch_size, 1, 1, 1)
             fake_loss = process_batch(fake_batch.detach(), target_for_discriminator, discriminator, criterion)
