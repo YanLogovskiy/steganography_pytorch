@@ -93,6 +93,7 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
         save_torch(generator, save_path / 'generator')
         save_torch(discriminator, save_path / 'discriminator')
 
+    logger = TBLogger(save_path / 'logs')
     callbacks = [predict_on_fixed_noise, save_models]
     train_dcgan(
         generator=generator,
@@ -106,7 +107,7 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
         n_batches_per_epoch=n_batches_per_epoch,
         n_noise_channels=n_noise_channels,
         callbacks=callbacks,
-        logger=TBLogger('logs')
+        logger=logger
     )
 
 
