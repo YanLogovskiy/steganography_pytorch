@@ -84,10 +84,10 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
 
     fixed_noise = torch.randn(64, n_noise_channels, 1, 1, device=device)
 
-    def predict_on_fixed_noise(epoch, prefix='fixed_noise'):
+    def predict_on_fixed_noise(epoch, prefix='fixed_noise', compression=1):
         predict = to_numpy(inference_step(fixed_noise, generator))
         os.makedirs(save_path / prefix, exist_ok=True)
-        save_numpy(predict, save_path / prefix / f'{epoch}.npy.gz')
+        save_numpy(predict, save_path / prefix / f'{epoch}.npy.gz', compression=compression)
 
     def save_models(epoch):
         save_torch(generator, save_path / 'generator')
