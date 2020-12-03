@@ -47,12 +47,15 @@ class CelebDataset(ImageFolder):
 
 class BatchIterator(object):
     def __init__(self, dataset: Dataset, indices: Sequence, *, batch_size):
-        self.loader = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, sampler=SubsetRandomSampler(indices))
-        self.loader = iter(self.loader)
+        def create_loader():
+            loader = torch.utils.data.DataLoader(
+                dataset, batch_size=batch_size, sampler=SubsetRandomSampler(indices))
+            return iter(loader)
+
+        self.create_loader = create_loader
 
     def __iter__(self):
-        return self.loader
+        return self.create_loader()
 
 
 def split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2, shuffle=True, random_state=42):

@@ -64,7 +64,7 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
 
 
 def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, test_size: bool, n_epoch: int,
-                   batch_size: int, n_batches_per_epoch: int, n_noise_channels: int, save_path: str):
+                   batch_size: int, n_noise_channels: int, save_path: str):
     # path to save everything related to experiment
     save_path = Path(save_path).expanduser()
 
