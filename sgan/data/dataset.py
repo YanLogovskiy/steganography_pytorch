@@ -45,10 +45,10 @@ class CelebDataset(ImageFolder):
         super().__init__(*args, root=root, **kwargs, transform=transform)
 
 
-class InfiniteIterator(object):
+class BatchIterator(object):
     def __init__(self, dataset: Dataset, indices: Sequence, *, batch_size):
         self.loader = torch.utils.data.DataLoader(
-            dataset, sampler=SubsetRandomSampler(indices), batch_size=batch_size)
+            dataset, batch_size=batch_size, sampler=SubsetRandomSampler(indices))
         self.loader = iter(self.loader)
 
     def __iter__(self):
@@ -66,6 +66,6 @@ def split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2, shuffle=Tru
 
 
 def create_iterators(dataset, train_indices, val_indices, batch_size=64):
-    train_iterator = iter(InfiniteIterator(dataset, train_indices, batch_size=batch_size))
-    val_iterator = iter(InfiniteIterator(dataset, val_indices, batch_size=batch_size))
+    train_iterator = iter(BatchIterator(dataset, train_indices, batch_size=batch_size))
+    val_iterator = iter(BatchIterator(dataset, val_indices, batch_size=batch_size))
     return train_iterator, val_iterator

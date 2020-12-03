@@ -15,9 +15,8 @@ from sgan.data import CelebDataset, split_data, create_iterators
 from sgan.train.base import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
 
 
-def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch,
-                n_batches_per_epoch, batch_size, generator_opt, discriminator_opt, n_noise_channels,
-                callbacks: Sequence[Callable] = None, logger: TBLogger):
+def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, generator_opt,
+                discriminator_opt, n_noise_channels, callbacks: Sequence[Callable] = None, logger: TBLogger):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     criterion = F.binary_cross_entropy_with_logits
@@ -28,11 +27,11 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch,
         discriminator_losses_on_real = []
         discriminator_losses_on_fake = []
 
-        for _ in range(n_batches_per_epoch):
+        for real_batch, _ in train_iterator:
+            batch_size = len(real_batch)
             discriminator_opt.zero_grad()
 
             # train discriminator on real
-            real_batch, _ = next(train_iterator)
             real_target = torch.ones(batch_size, 1, 1, 1)
             real_loss = process_batch(real_batch, real_target, discriminator, criterion)
 
@@ -104,8 +103,6 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
         train_iterator=train_iterator,
         device=device,
         n_epoch=n_epoch,
-        batch_size=batch_size,
-        n_batches_per_epoch=n_batches_per_epoch,
         n_noise_channels=n_noise_channels,
         callbacks=callbacks,
         logger=logger
@@ -121,9 +118,8 @@ def main():
     parser.add_argument('--train_size', default=0.6, type=float)
     parser.add_argument('--test_size', default=0.2, type=float)
     parser.add_argument('--val_size', default=0.2, type=float)
-    parser.add_argument('--batch_size', default=4, type=int)
-    parser.add_argument('--n_epoch', default=2, type=int)
-    parser.add_argument('--n_batches_per_epoch', default=5, type=int)
+    parser.add_argument('--batch_size', default=128, type=int)
+    parser.add_argument('--n_epoch', default=10, type=int)
     parser.add_argument('--n_noise_channels', default=64, type=int)
     parser.add_argument('--save_path', default='~/celeba', type=str)
 
