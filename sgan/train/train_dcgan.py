@@ -27,34 +27,35 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
         discriminator_losses_on_real = []
         discriminator_losses_on_fake = []
 
-        for real_batch, _ in train_iterator:
-            batch_size = len(real_batch)
-            discriminator_opt.zero_grad()
+        with train_iterator as iterator:
+            for real_batch, _ in iterator:
+                batch_size = len(real_batch)
+                discriminator_opt.zero_grad()
 
-            # train discriminator on real
-            real_target = torch.ones(batch_size, 1, 1, 1)
-            real_loss = process_batch(real_batch, real_target, discriminator, criterion)
+                # train discriminator on real
+                real_target = torch.ones(batch_size, 1, 1, 1)
+                real_loss = process_batch(real_batch, real_target, discriminator, criterion)
 
-            # train discriminator on fake
-            noise = generate_noise(batch_size, n_noise_channels, device)
-            fake_batch = generator(noise)
-            target_for_discriminator = torch.zeros(batch_size, 1, 1, 1)
-            fake_loss = process_batch(fake_batch.detach(), target_for_discriminator, discriminator, criterion)
-            discriminator_opt.step()
+                # train discriminator on fake
+                noise = generate_noise(batch_size, n_noise_channels, device)
+                fake_batch = generator(noise)
+                target_for_discriminator = torch.zeros(batch_size, 1, 1, 1)
+                fake_loss = process_batch(fake_batch.detach(), target_for_discriminator, discriminator, criterion)
+                discriminator_opt.step()
 
-            generator_opt.zero_grad()
-            # train generator
-            target_for_generator = torch.ones(batch_size, 1, 1, 1)
-            generator_loss = process_batch(fake_batch, target_for_generator, discriminator, criterion)
-            generator_opt.step()
+                generator_opt.zero_grad()
+                # train generator
+                target_for_generator = torch.ones(batch_size, 1, 1, 1)
+                generator_loss = process_batch(fake_batch, target_for_generator, discriminator, criterion)
+                generator_opt.step()
 
-            generator_losses.append(generator_loss)
-            discriminator_losses_on_real.append(real_loss)
-            discriminator_losses_on_fake.append(fake_loss)
+                generator_losses.append(generator_loss)
+                discriminator_losses_on_real.append(real_loss)
+                discriminator_losses_on_fake.append(fake_loss)
 
-        # run callbacks
-        for callback in callbacks:
-            callback(epoch)
+            # run callbacks
+            for callback in callbacks:
+                callback(epoch)
 
         losses = {'Generator': np.mean(generator_losses),
                   'Discriminator on fake': np.mean(discriminator_losses_on_fake),

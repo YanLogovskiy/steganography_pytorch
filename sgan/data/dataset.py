@@ -54,8 +54,11 @@ class BatchIterator(object):
 
         self.create_loader = create_loader
 
-    def __iter__(self):
+    def __enter__(self):
         return self.create_loader()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
 
 def split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2, shuffle=True, random_state=42):
@@ -69,6 +72,6 @@ def split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2, shuffle=Tru
 
 
 def create_iterators(dataset, train_indices, val_indices, batch_size=64):
-    train_iterator = iter(BatchIterator(dataset, train_indices, batch_size=batch_size))
-    val_iterator = iter(BatchIterator(dataset, val_indices, batch_size=batch_size))
+    train_iterator = BatchIterator(dataset, train_indices, batch_size=batch_size)
+    val_iterator = BatchIterator(dataset, val_indices, batch_size=batch_size)
     return train_iterator, val_iterator
