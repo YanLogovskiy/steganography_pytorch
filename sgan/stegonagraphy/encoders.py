@@ -28,8 +28,6 @@ def bits_to_bytes(sequence: List[int]):
     while len(chunks[-1]) != 8:
         chunks[-1].append(0)
 
-    print(chunks)
-
     def process_single(chunk):
         result = 0
         for i, x in enumerate(reversed(chunk)):
@@ -49,6 +47,9 @@ class LeastSignificantBitEncoder:
         raise NotImplementedError
 
     def decode(self, container, key):
+        raise NotImplementedError
+
+    def encode_batch(self):
         raise NotImplementedError
 
 
@@ -84,6 +85,9 @@ class PlusMinusNumpyEncoder(LeastSignificantBitEncoder):
             message = bits_to_bytes(message)
         return message
 
+    def encode_batch(self):
+        raise NotImplementedError
+
 
 class SigmoidNumpyEncoder(LeastSignificantBitEncoder):
     def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
@@ -92,13 +96,8 @@ class SigmoidNumpyEncoder(LeastSignificantBitEncoder):
     def decode(self, container: np.ndarray, key: np.ndarray):
         pass
 
-
-class PlusMinusPytorchEncoder(LeastSignificantBitEncoder):
-    def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
-        pass
-
-    def decode(self, container: np.ndarray, key: np.ndarray):
-        pass
+    def encode_batch(self):
+        raise NotImplementedError
 
 
 class SigmoidPytorchEncoder(LeastSignificantBitEncoder):
@@ -107,6 +106,9 @@ class SigmoidPytorchEncoder(LeastSignificantBitEncoder):
 
     def decode(self, container: np.ndarray, key: np.ndarray):
         pass
+
+    def encode_batch(self):
+        raise NotImplementedError
 
 # # TODO: move to pytorch
 # def sigmoid(X):

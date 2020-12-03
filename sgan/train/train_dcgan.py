@@ -23,7 +23,6 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch,
     criterion = F.binary_cross_entropy_with_logits
 
     callbacks = callbacks or []
-    print(1)
     for epoch in tqdm(range(n_epoch)):
         generator_losses = []
         discriminator_losses_on_real = []

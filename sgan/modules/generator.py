@@ -18,12 +18,11 @@ class Generator(nn.Module):
         structure = structure or [512, 256, 128, 64, out_channels]
         if base_block is None:
             base_block = partial(
-                TransposedPreactivation, activation_module=nn.LeakyReLU, **convolution_params, bias=bias
+                TransposedPreactivation, activation_module=nn.ReLU, **convolution_params, bias=bias
             )
 
-        # TODO: remove hardcode?
-        self.input = nn.ConvTranspose2d(in_channels, structure[0], kernel_size=kernel_size,
-                                        stride=1, padding=0, bias=bias)
+        self.input = nn.Sequential(nn.ConvTranspose2d(in_channels, structure[0], kernel_size=kernel_size,
+                                                      stride=1, padding=0, bias=bias), nn.ReLU())
         self.core = nn.Sequential(*(base_block(in_c, out_c) for in_c, out_c in zip(structure, structure[1:])))
         self.activation = nn.Tanh()
 
