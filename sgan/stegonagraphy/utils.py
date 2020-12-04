@@ -40,46 +40,19 @@ def bits_to_bytes(sequence: List[int]):
 
 
 def calculate_sine_rung(x: torch.tensor, bit_value: int, beta=15):
-    # bs, c, h, w
-    assert len(x.shape) == 4
     assert bit_value in [0, 1]
     return torch.sigmoid(beta * torch.sin(np.pi * (bit_value - x)))
 
 
-def calculate_multiplier(x: torch.tensor, eps: float = 2e-7):
-    plus_eps_mask = (x >= -1) & (x < -1 + eps)
-    minus_eps_mask = (x <= 1) & (x > 1 + eps)
-
-    # fill -1, 1
+def calculate_multiplier(x: torch.tensor, bit_value, eps: float = 2e-7):
     total_mask = np.random.choice([-1, 1], np.prod(x.shape)).reshape(x.shape)
+    if bit_value == 1:
+        plus_eps_mask = (x >= -1) & (x < -1 + eps)
+        total_mask[plus_eps_mask] = 1
+    elif bit_value == 0:
+        minus_eps_mask = (x > 1 - eps) & (x <= 1)
+        total_mask[minus_eps_mask] = -1
+
     total_mask = torch.from_numpy(total_mask)
-    total_mask[plus_eps_mask] = 1
-    total_mask[minus_eps_mask] = -1
     values = total_mask * eps
     return values
-
-# # TODO: optimize
-# def S_m(m, x):
-#     if m == 1 and x >= -1 and x < -1 + (2 ** -7):
-#         ksi = (2 ** -7)
-#     elif m == 0 and x > 1 - (2 ** -7) and x <= 1:
-#         ksi = -(2 ** -7)
-#     else:
-#         ksi = random.choice([-(2 ** -7), (2 ** -7)])
-#
-#     z = (x + 1) * (2 ** 7)
-#
-#     return x + ksi * p_m(m, z)
-#
-#
-# def LSB(image, message):
-#     img = image
-#
-#     message_size = len(message)
-#     axis_0 = random.sample(range(image.shape[1]), message_size)
-#     axis_1 = random.sample(range(image.shape[2]), message_size)
-#
-#     for pixel_i, pixel_j, i in zip(axis_0, axis_1, range(len(message))):
-#         img[2][pixel_i][pixel_j] = S_m(message[i], img[2][pixel_i][pixel_j])
-#
-#     return img

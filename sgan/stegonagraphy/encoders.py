@@ -1,5 +1,6 @@
+import torch
 import numpy as np
-from sgan.stegonagraphy.utils import bits_to_bytes
+from sgan.stegonagraphy.utils import bits_to_bytes, calculate_sine_rung, calculate_multiplier
 
 
 class LeastSignificantBitEncoder:
@@ -8,9 +9,6 @@ class LeastSignificantBitEncoder:
 
     # methods used for a single image
     def encode(self, container, message, key):
-        raise NotImplementedError
-
-    def decode(self, container, key):
         raise NotImplementedError
 
     def encode_batch(self, containers, messages, keys):
@@ -65,12 +63,56 @@ class PlusMinusNumpyEncoder(LeastSignificantBitEncoder):
         return result
 
 
-class SigmoidPytorchEncoder(LeastSignificantBitEncoder):
-    def encode(self, container: np.ndarray, message: np.ndarray, key: np.ndarray):
-        pass
+class SigmoidTorchEncoder(LeastSignificantBitEncoder):
+    def __init__(self, *args, beta=15, eps=2e-7, **kwargs):
+        self.eps = eps
+        self.beta = beta
 
-    def decode(self, container: np.ndarray, key: np.ndarray):
-        pass
+        super().__init__(*args, **kwargs)
 
-    def encode_batch(self):
-        raise NotImplementedError
+    def encode(self, container: torch.tensor, message: np.ndarray, key: np.ndarray):
+        assert len(container.shape) == 3
+        assert len(message) == len(key)
+        # some calculations
+        # TODO: can we make a copy?
+        container = torch.clone(container)
+        red_channel = container[0, ...]
+        scaled_channel = (red_channel + 1) / self.eps
+        one_rung = calculate_sine_rung(scaled_channel, 1, beta=self.beta)
+        zero_rung = calculate_sine_rung(scaled_channel, 0, beta=self.beta)
+
+        one_mul = calculate_multiplier(red_channel, 1, eps=self.eps)
+        zero_mul = calculate_multiplier(red_channel, 0, eps=self.eps)
+
+        for bit_value, pos in zip(message, key):
+            if bit_value == 1:
+                red_channel[pos] = one_mul[pos] * one_rung[pos]
+            elif bit_value == 0:
+                red_channel[pos] = zero_mul[pos] * zero_rung[pos]
+
+        return container
+
+    def decode(self, container: torch.tensor, key: torch.tensor):
+        assert len(container.shape) == 3
+        red_channel = (container[0, ...] + 1) / self.eps
+        red_channel = np.floor(red_channel.numpy()).astype(np.int)
+
+        message = []
+        for pos in key:
+            message.append(red_channel[pos] & 1)
+
+        if self.convert_to_bytes:
+            message = bits_to_bytes(message)
+        return message
+
+    def encode_batch(self, containers: torch.tensor, messages: np.ndarray, keys: np.ndarray):
+        result = []
+        for container, message, key in zip(containers, messages, keys):
+            result.append(self.encode(container, message, key))
+        return torch.stack(result)
+
+    def decode_batch(self, containers: torch.tensor, keys: np.ndarray):
+        result = []
+        for container, key in zip(containers, keys):
+            result.append(self.decode(container, key))
+        return result
