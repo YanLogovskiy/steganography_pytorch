@@ -44,8 +44,10 @@ def calculate_sine_rung(x: torch.tensor, bit_value: int, beta=15):
     return torch.sigmoid(beta * torch.sin(np.pi * (bit_value - x)))
 
 
-def calculate_multiplier(x: torch.tensor, bit_value, eps: float = 2e-7):
+def calculate_multiplier(x: torch.tensor, bit_value, inv_eps: float = 128):
+    eps = 1 / inv_eps
     total_mask = np.random.choice([-1, 1], np.prod(x.shape)).reshape(x.shape)
+
     if bit_value == 1:
         plus_eps_mask = (x >= -1) & (x < -1 + eps)
         total_mask[plus_eps_mask] = 1

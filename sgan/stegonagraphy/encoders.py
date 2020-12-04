@@ -11,6 +11,9 @@ class LeastSignificantBitEncoder:
     def encode(self, container, message, key):
         raise NotImplementedError
 
+    def decode(self, container, key):
+        raise NotImplementedError
+
     def encode_batch(self, containers, messages, keys):
         raise NotImplementedError
 
@@ -64,8 +67,8 @@ class PlusMinusNumpyEncoder(LeastSignificantBitEncoder):
 
 
 class SigmoidTorchEncoder(LeastSignificantBitEncoder):
-    def __init__(self, *args, beta=15, eps=2e-7, **kwargs):
-        self.eps = eps
+    def __init__(self, *args, beta=5, inv_eps=128, **kwargs):
+        self.inv_eps = inv_eps
         self.beta = beta
 
         super().__init__(*args, **kwargs)
@@ -77,24 +80,24 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
         # TODO: can we make a copy?
         container = torch.clone(container)
         red_channel = container[0, ...]
-        scaled_channel = (red_channel + 1) / self.eps
+        scaled_channel = self.inv_eps * (red_channel + 1)
         one_rung = calculate_sine_rung(scaled_channel, 1, beta=self.beta)
         zero_rung = calculate_sine_rung(scaled_channel, 0, beta=self.beta)
 
-        one_mul = calculate_multiplier(red_channel, 1, eps=self.eps)
-        zero_mul = calculate_multiplier(red_channel, 0, eps=self.eps)
+        one_mul = calculate_multiplier(red_channel, 1, inv_eps=self.inv_eps)
+        zero_mul = calculate_multiplier(red_channel, 0, inv_eps=self.inv_eps)
 
         for bit_value, pos in zip(message, key):
             if bit_value == 1:
-                red_channel[pos] = one_mul[pos] * one_rung[pos]
+                red_channel[pos] += one_mul[pos] * one_rung[pos]
             elif bit_value == 0:
-                red_channel[pos] = zero_mul[pos] * zero_rung[pos]
+                red_channel[pos] += zero_mul[pos] * zero_rung[pos]
 
         return container
 
     def decode(self, container: torch.tensor, key: torch.tensor):
         assert len(container.shape) == 3
-        red_channel = (container[0, ...] + 1) / self.eps
+        red_channel = self.inv_eps * (container[0, ...] + 1)
         red_channel = np.floor(red_channel.numpy()).astype(np.int)
 
         message = []
