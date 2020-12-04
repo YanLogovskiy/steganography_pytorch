@@ -53,9 +53,9 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
                 discriminator_losses_on_real.append(real_loss)
                 discriminator_losses_on_fake.append(fake_loss)
 
-            # run callbacks
-            for callback in callbacks:
-                callback(epoch)
+        # run callbacks
+        for callback in callbacks:
+            callback(epoch)
 
         losses = {'Generator': np.mean(generator_losses),
                   'Discriminator on fake': np.mean(discriminator_losses_on_fake),
@@ -65,12 +65,13 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
 
 
 def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, test_size: bool, n_epoch: int,
-                   batch_size: int, n_noise_channels: int, save_path: str):
+                   batch_size: int, n_noise_channels: int, data_path: str, experiment_path: str):
     # path to save everything related to experiment
-    save_path = Path(save_path).expanduser()
+    data_path = Path(data_path).expanduser()
+    experiment_path = Path(experiment_path).expanduser()
 
     # create dataset and models
-    dataset = CelebDataset(download=download)
+    dataset = CelebDataset(root=data_path, download=download)
     generator = Generator(in_channels=n_noise_channels).to(device)
     discriminator = Discriminator().to(device)
 
@@ -87,15 +88,17 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
 
     def predict_on_fixed_noise(epoch, prefix='fixed_noise', compression=1):
         predict = to_numpy(inference_step(fixed_noise, generator))
-        os.makedirs(save_path / prefix, exist_ok=True)
-        save_numpy(predict, save_path / prefix / f'{epoch}.npy.gz', compression=compression)
+        os.makedirs(experiment_path / prefix, exist_ok=True)
+        save_numpy(predict, experiment_path / prefix / f'{epoch}.npy.gz', compression=compression)
 
     def save_models(epoch):
-        save_torch(generator, save_path / 'generator')
-        save_torch(discriminator, save_path / 'discriminator')
+        save_torch(generator, experiment_path / 'generator')
+        save_torch(discriminator, experiment_path / 'discriminator')
 
-    logger = TBLogger(save_path / 'logs')
-    callbacks = [predict_on_fixed_noise, save_models]
+    logger = TBLogger(experiment_path / 'logs')
+    epoch_callbacks = [predict_on_fixed_noise, save_models]
+    batch_callbacks = []
+
     train_dcgan(
         generator=generator,
         generator_opt=generator_opt,
@@ -105,7 +108,7 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
         device=device,
         n_epoch=n_epoch,
         n_noise_channels=n_noise_channels,
-        callbacks=callbacks,
+        callbacks=epoch_callbacks,
         logger=logger
     )
 
@@ -113,16 +116,17 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', required=True)
+    parser.add_argument('--experiment_path', type=str, required=True)
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--train_size', default=0.6, type=float)
-    parser.add_argument('--test_size', default=0.2, type=float)
-    parser.add_argument('--val_size', default=0.2, type=float)
-    parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--n_epoch', default=10, type=int)
+    parser.add_argument('--train_size', default=0.9, type=float)
+    parser.add_argument('--test_size', default=0.05, type=float)
+    parser.add_argument('--val_size', default=0.05, type=float)
+    parser.add_argument('--batch_size', default=256, type=int)
+    parser.add_argument('--n_epoch', default=25, type=int)
     parser.add_argument('--n_noise_channels', default=64, type=int)
-    parser.add_argument('--save_path', default='~/celeba', type=str)
+    parser.add_argument('--data_path', default='~/celeba', type=str)
 
     args = parser.parse_args()
     run_experiment(**vars(args))

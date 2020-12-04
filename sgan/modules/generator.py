@@ -14,7 +14,6 @@ class Generator(nn.Module):
             kernel_size=kernel_size, stride=stride,
             padding=padding, dilation=dilation
         )
-
         structure = structure or [512, 256, 128, 64, out_channels]
         if base_block is None:
             base_block = partial(

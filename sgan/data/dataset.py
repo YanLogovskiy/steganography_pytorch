@@ -28,7 +28,6 @@ default_transforms = transforms.Compose([
 class CelebDataset(ImageFolder):
     def __init__(self, *args, download=False, root='~/celeba', transform=default_transforms, **kwargs):
         root = Path(root).expanduser()
-
         if download:
             os.makedirs(root, exist_ok=True)
             # download dataset
@@ -37,7 +36,6 @@ class CelebDataset(ImageFolder):
 
             with zipfile.ZipFile(root / 'celeba-dataset.zip', "r") as f:
                 f.extractall(root)
-
             # remove zip file
             os.remove(root / 'celeba-dataset.zip')
 
@@ -63,7 +61,6 @@ class BatchIterator(object):
 
 def split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2, shuffle=True, random_state=42):
     assert train_size + test_size + val_size == 1.
-
     split_kwargs = dict(random_state=random_state, shuffle=shuffle)
     indices = list(range(len(dataset)))
     train_indices, test_indices = train_test_split(indices, test_size=test_size, **split_kwargs)
