@@ -28,5 +28,4 @@ class Discriminator(nn.Module):
         x = self.input(x)
         x = self.core(x)
         x = self.output(x)
-        # in my opinion output should be a single integer value \in [-inf, +inf] (i.e a single logit)
         return x

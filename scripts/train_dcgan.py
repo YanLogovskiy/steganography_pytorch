@@ -11,70 +11,22 @@ from typing import Sequence, Callable
 
 from sgan.train.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
-from sgan.data import CelebDataset, split_data, create_iterators
+from sgan.data import CelebDataset, BatchIterator
 from sgan.train.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
 
 
-def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, generator_opt,
-                discriminator_opt, n_noise_channels, callbacks: Sequence[Callable] = None, logger: TBLogger):
-    generator = generator.to(device)
-    discriminator = discriminator.to(device)
-    criterion = F.binary_cross_entropy_with_logits
-
-    callbacks = callbacks or []
-    for epoch in tqdm(range(n_epoch)):
-        generator_losses = []
-        discriminator_losses_on_real = []
-        discriminator_losses_on_fake = []
-
-        with train_iterator as iterator:
-            for real_batch, _ in iterator:
-                batch_size = len(real_batch)
-                discriminator_opt.zero_grad()
-                # train discriminator on real
-                real_target = torch.ones(batch_size, 1, 1, 1)
-                real_loss = process_batch(real_batch, real_target, discriminator, criterion)
-                # train discriminator on fake
-                noise = generate_noise(batch_size, n_noise_channels, device)
-                fake_batch = generator(noise)
-                target_for_discriminator = torch.zeros(batch_size, 1, 1, 1)
-                fake_loss = process_batch(fake_batch.detach(), target_for_discriminator, discriminator, criterion)
-                discriminator_opt.step()
-                # train generator
-                generator_opt.zero_grad()
-                target_for_generator = torch.ones(batch_size, 1, 1, 1)
-                generator_loss = process_batch(fake_batch, target_for_generator, discriminator, criterion)
-                generator_opt.step()
-
-                generator_losses.append(generator_loss)
-                discriminator_losses_on_real.append(real_loss)
-                discriminator_losses_on_fake.append(fake_loss)
-
-        # run callbacks
-        for callback in callbacks:
-            callback(epoch)
-
-        losses = {'Generator': np.mean(generator_losses),
-                  'Discriminator on fake': np.mean(discriminator_losses_on_fake),
-                  'Discriminator on real': np.mean(discriminator_losses_on_real)
-                  }
-        logger.policies(losses, epoch)
-
-
-def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, test_size: bool, n_epoch: int,
-                   batch_size: int, n_noise_channels: int, data_path: str, experiment_path: str):
+def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_noise_channels: int
+                   , data_path: str, experiment_path: str):
     # path to save everything related to experiment
     data_path = Path(data_path).expanduser()
     experiment_path = Path(experiment_path).expanduser()
-
-    # create dataset and models
+    # dataset and batch iterator
     dataset = CelebDataset(root=data_path, download=download)
+    indices = list(range(len(dataset)))
+    train_iterator = BatchIterator(dataset, indices, batch_size=batch_size)
+    # models
     generator = Generator(in_channels=n_noise_channels).to(device)
     discriminator = Discriminator().to(device)
-
-    split = split_data(dataset, train_size=train_size, val_size=val_size, test_size=test_size)
-    train_indices, val_indices, test_indices = split
-    train_iterator, val_iterator = create_iterators(dataset, train_indices, val_indices, batch_size=batch_size)
 
     # TODO: remove hardcode
     optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
@@ -110,6 +62,51 @@ def run_experiment(*, device, download: bool, train_size: bool, val_size: bool, 
     )
 
 
+def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, generator_opt,
+                discriminator_opt, n_noise_channels, callbacks: Sequence[Callable] = None, logger: TBLogger):
+    generator = generator.to(device)
+    discriminator = discriminator.to(device)
+    criterion = F.binary_cross_entropy_with_logits
+
+    callbacks = callbacks or []
+    for epoch in tqdm(range(n_epoch)):
+        generator_losses = []
+        discriminator_losses_on_real = []
+        discriminator_losses_on_fake = []
+
+        with train_iterator as iterator:
+            for real_batch, _ in iterator:
+                batch_size = len(real_batch)
+                discriminator_opt.zero_grad()
+                # train discriminator on real
+                real_loss = process_batch(real_batch, torch.ones(batch_size, 1, 1, 1), discriminator, criterion)
+                # train discriminator on fake
+                noise = generate_noise(batch_size, n_noise_channels, device)
+                fake_batch = generator(noise)
+                fake_loss = process_batch(fake_batch.detach(), torch.zeros(batch_size, 1, 1, 1), discriminator,
+                                          criterion)
+                discriminator_opt.step()
+                # train generator
+                generator_opt.zero_grad()
+                target_for_generator = torch.ones(batch_size, 1, 1, 1)
+                generator_loss = process_batch(fake_batch, target_for_generator, discriminator, criterion)
+                generator_opt.step()
+
+                generator_losses.append(generator_loss)
+                discriminator_losses_on_real.append(real_loss)
+                discriminator_losses_on_fake.append(fake_loss)
+
+        # run callbacks
+        for callback in callbacks:
+            callback(epoch)
+
+        losses = {'Generator': np.mean(generator_losses),
+                  'Discriminator on fake': np.mean(discriminator_losses_on_fake),
+                  'Discriminator on real': np.mean(discriminator_losses_on_real)
+                  }
+        logger.policies(losses, epoch)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', required=True)
@@ -117,9 +114,6 @@ def main():
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--train_size', default=0.9, type=float)
-    parser.add_argument('--test_size', default=0.05, type=float)
-    parser.add_argument('--val_size', default=0.05, type=float)
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--n_epoch', default=25, type=int)
     parser.add_argument('--n_noise_channels', default=64, type=int)

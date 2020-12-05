@@ -38,32 +38,24 @@ def group_dicts(dicts):
 
 
 class Logger:
-    """Interface for logging during training."""
-
     def _dict(self, prefix, d, step):
         for name, value in d.items():
             self.value(f'{prefix}{name}', value, step)
 
     def train(self, train_losses: Sequence, step: int):
-        """Log the ``train_losses`` at current ``step``."""
         raise NotImplementedError
 
     def value(self, name: str, value, step: int):
-        """Log a single ``value``."""
         raise NotImplementedError
 
     def policies(self, policies: dict, step: int):
-        """Log values coming from `ValuePolicy` objects."""
         self._dict('policies/', policies, step)
 
     def metrics(self, metrics: dict, step: int):
-        """Log the metrics returned by the validation function during training."""
         self._dict('val/metrics/', metrics, step)
 
 
 class TBLogger(Logger):
-    """A logger that writes to a tensorboard log file located at ``log_path``."""
-
     def __init__(self, log_path: PathLike):
         import tensorboard_easy
         self.logger = tensorboard_easy.Logger(log_path)

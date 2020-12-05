@@ -6,7 +6,7 @@ from itertools import cycle
 default_path = os.path.join(os.path.dirname(__file__), '../../data/text.txt')
 
 
-class TextIterator:
+class TextLoader:
     def __init__(self, path=None, min_size=180, max_size=220, seed=42, shuffle=True):
         path = path or default_path
         with open(path) as f:
