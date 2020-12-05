@@ -1,7 +1,6 @@
 import os
 import re
 import random
-
 from itertools import cycle
 
 default_path = os.path.join(os.path.dirname(__file__), '../../data/text.txt')

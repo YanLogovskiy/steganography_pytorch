@@ -12,7 +12,7 @@ from typing import Sequence, Callable
 from sgan.train.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
 from sgan.data import CelebDataset, split_data, create_iterators
-from sgan.train.base import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
+from sgan.train.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
 
 
 def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, generator_opt,
@@ -31,20 +31,17 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
             for real_batch, _ in iterator:
                 batch_size = len(real_batch)
                 discriminator_opt.zero_grad()
-
                 # train discriminator on real
                 real_target = torch.ones(batch_size, 1, 1, 1)
                 real_loss = process_batch(real_batch, real_target, discriminator, criterion)
-
                 # train discriminator on fake
                 noise = generate_noise(batch_size, n_noise_channels, device)
                 fake_batch = generator(noise)
                 target_for_discriminator = torch.zeros(batch_size, 1, 1, 1)
                 fake_loss = process_batch(fake_batch.detach(), target_for_discriminator, discriminator, criterion)
                 discriminator_opt.step()
-
-                generator_opt.zero_grad()
                 # train generator
+                generator_opt.zero_grad()
                 target_for_generator = torch.ones(batch_size, 1, 1, 1)
                 generator_loss = process_batch(fake_batch, target_for_generator, discriminator, criterion)
                 generator_opt.step()

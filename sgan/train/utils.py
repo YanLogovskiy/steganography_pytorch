@@ -44,6 +44,11 @@ def inference_step(inputs, model):
         return model(inputs)
 
 
+def scale_gradients(model: nn.Module, scale):
+    for p in model.parameters():
+        p.grad *= scale
+
+
 PathLike = Union[Path, str]
 
 
@@ -52,7 +57,6 @@ def save_torch(o: nn.Module, path: PathLike):
 
 
 def save_numpy(value, path: PathLike, *, allow_pickle: bool = True, fix_imports: bool = True, compression: int = None):
-    """A wrapper around ``np.save`` that matches the interface ``save(what, where)``."""
     if compression is not None:
         with GzipFile(path, 'wb', compresslevel=compression) as file:
             return save_numpy(value, file, allow_pickle=allow_pickle, fix_imports=fix_imports)
@@ -61,7 +65,6 @@ def save_numpy(value, path: PathLike, *, allow_pickle: bool = True, fix_imports:
 
 
 def load_numpy(path: PathLike, *, allow_pickle: bool = True, fix_imports: bool = True, decompress: bool = False):
-    """A wrapper around ``np.load`` with ``allow_pickle`` set to True by default."""
     if decompress:
         with GzipFile(path, 'rb') as file:
             return load_numpy(file, allow_pickle=allow_pickle, fix_imports=fix_imports)

@@ -3,12 +3,6 @@ from functools import partial
 
 
 class PreActivation2d(nn.Module):
-    """
-    Performs a sequence of batch_norm, activation, and convolution
-
-        in -> (BN -> activation -> Conv) -> out
-    """
-
     def __init__(self, in_channels, out_channels, *, activation_module=nn.ReLU, conv_module,
                  kernel_size, stride=1, padding=0, bias=True, dilation=1):
         super().__init__()
@@ -27,16 +21,6 @@ class PreActivation2d(nn.Module):
 
 
 class ResBlock2d(nn.Module):
-    """
-        Performs a sequence of two convolutions with residual connection (Residual Block).
-
-        ..
-            in ---> (BN --> activation --> Conv) --> (BN --> activation --> Conv) -- + --> out
-                |                                                                    ^
-                |                                                                    |
-                 --------------------------------------------------------------------
-    """
-
     def __init__(self, in_channels, out_channels, *, use_shortcut=True, kernel_size=3, stride=1, padding=1, dilation=1,
                  bias=False, activation_module=nn.ReLU, conv_module):
         super().__init__()
