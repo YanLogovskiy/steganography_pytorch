@@ -135,9 +135,7 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                 labels = torch.logical_xor(labels, torch.tensor(1)).float()
                 generator_opt.zero_grad()
                 generator_message_losses.append(process_batch(encoded_images, labels, message_analyser, criterion))
-                print('before', next(generator.parameters()).grad)
                 scale_gradients(generator, 1 - loss_balancer)
-                print('after', next(generator.parameters()).grad)
                 generator_opt.step()
 
             # run callbacks

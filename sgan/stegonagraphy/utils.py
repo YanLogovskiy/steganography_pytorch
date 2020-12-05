@@ -43,7 +43,7 @@ def bits_to_bytes(sequence: List[int]):
     return message
 
 
-def calculate_sine_rung(x: torch.tensor, bit_value: int, beta=15):
+def calculate_sine_step(x: torch.tensor, bit_value: int, beta=15):
     assert bit_value in [0, 1]
     return torch.sigmoid(beta * torch.sin(np.pi * (bit_value - x)))
 

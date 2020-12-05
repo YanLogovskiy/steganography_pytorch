@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from sgan.stegonagraphy.utils import bits_to_bytes, calculate_sine_rung, calculate_multiplier
+from sgan.stegonagraphy.utils import bits_to_bytes, calculate_sine_step, calculate_multiplier
 
 
 class LeastSignificantBitEncoder:
@@ -81,20 +81,20 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
         container = torch.clone(container)
         red_channel = container[0, ...]
         scaled_channel = self.inv_eps * (red_channel + 1)
-        one_rung = calculate_sine_rung(scaled_channel, 1, beta=self.beta)
-        zero_rung = calculate_sine_rung(scaled_channel, 0, beta=self.beta)
-
+        # calculate sine approximation
+        one_step = calculate_sine_step(scaled_channel, 1, beta=self.beta)
+        zero_step = calculate_sine_step(scaled_channel, 0, beta=self.beta)
+        # random multipliers
         one_mul = calculate_multiplier(red_channel, 1, inv_eps=self.inv_eps)
         zero_mul = calculate_multiplier(red_channel, 0, inv_eps=self.inv_eps)
-        one_addition = one_mul * one_rung
-        zero_addition = zero_mul * zero_rung
-        # TODO: very slow
-        for bit_value, pos in zip(message, key):
-            if bit_value == 1:
-                red_channel[pos] += one_addition[pos]
-            elif bit_value == 0:
-                red_channel[pos] += zero_addition[pos]
-
+        one_addition = one_mul * one_step
+        zero_addition = zero_mul * zero_step
+        # indices for message embedding
+        one_pos = torch.tensor([x for i, x in enumerate(key) if message[i] == 1])
+        zero_pos = torch.tensor([x for i, x in enumerate(key) if message[i] == 0])
+        # embed message
+        red_channel[one_pos[:, 0], one_pos[:, 1]] += one_addition[one_pos[:, 0], one_pos[:, 1]]
+        red_channel[zero_pos[:, 0], zero_pos[:, 1]] += zero_addition[zero_pos[:, 0], zero_pos[:, 1]]
         return container
 
     def decode(self, container: torch.tensor, key: torch.tensor):
