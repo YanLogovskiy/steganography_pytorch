@@ -1,1 +1,2 @@
+#TODO write about the project (add reference to the paper, etc)
 To download data use https://github.com/Kaggle/kaggle-api and https://www.kaggle.com/jessicali9530/celeba-dataset since torchvision doesn't work (i suppose that the new version of google drive api is not compatible with torchvision)
