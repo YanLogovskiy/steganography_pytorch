@@ -1,21 +1,16 @@
 import os
-import torch
 import argparse
-import numpy as np
 
-from torch import nn
 from tqdm import tqdm
-from pathlib import Path
 from torch.nn import functional as F
+from typing import Sequence, Iterator
 from torch.optim import Adam, Optimizer
-from typing import Callable, Sequence, Iterator
 
-from sgan.train.loggers import TBLogger
+from sgan.utils import *
+from sgan.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
 from sgan.data import CelebDataset, TextLoader, BatchIterator
 from sgan.stegonagraphy import SigmoidTorchEncoder, generate_random_key, bytes_to_bits
-from sgan.train.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch, \
-    scale_gradients
 
 
 def run_experiment(*, device, download: bool, data_path: str, experiment_path: str, n_epoch: int, batch_size: int,
@@ -120,9 +115,9 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                 # start second part
                 containers = generator(generate_noise(batch_size, n_noise_channels, device))
                 labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
-
                 encoded_images = []
                 for container, label in zip(containers, labels):
+                    label = np.random.choice([0, 1])
                     if label == 1:
                         msg = bytes_to_bits(next(text_iterator))
                         key = generate_random_key(container.shape[1:], len(msg))
@@ -133,13 +128,16 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                 labels = torch.from_numpy(labels).float()
                 # train analyser
                 message_analyser_opt.zero_grad()
-                message_analyser_losses.append(process_batch(encoded_images, labels, message_analyser, criterion))
+                message_analyser_losses.append(
+                    process_batch(encoded_images.detach(), labels, message_analyser, criterion))
                 message_analyser_opt.step()
                 # train generator again
-                generator_opt.zero_grad()
                 labels = torch.logical_xor(labels, torch.tensor(1)).float()
+                generator_opt.zero_grad()
                 generator_message_losses.append(process_batch(encoded_images, labels, message_analyser, criterion))
+                print('before', next(generator.parameters()).grad)
                 scale_gradients(generator, 1 - loss_balancer)
+                print('after', next(generator.parameters()).grad)
                 generator_opt.step()
 
             # run callbacks
@@ -166,7 +164,7 @@ def main():
     parser.add_argument('--n_epoch', default=25, type=int)
     parser.add_argument('--n_noise_channels', default=64, type=int)
     parser.add_argument('--loss_balancer', default=0.85, type=float)
-    parser.add_argument('-- embedding_fidelity', default=10, type=float)
+    parser.add_argument('--embedding_fidelity', default=10, type=float)
     parser.add_argument('--data_path', default='~/celeba', type=str)
 
     args = parser.parse_args()

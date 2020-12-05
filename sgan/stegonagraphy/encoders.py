@@ -53,6 +53,7 @@ class PlusMinusNumpyEncoder(LeastSignificantBitEncoder):
             message = bits_to_bytes(message)
         return message
 
+    # TODO: vectorize
     def encode_batch(self, containers: np.ndarray, messages: np.ndarray, keys: np.ndarray):
         result = []
         for container, message, key in zip(containers, messages, keys):
@@ -77,7 +78,6 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
         assert len(container.shape) == 3
         assert len(message) == len(key)
         # some calculations
-        # TODO: can we make a copy?
         container = torch.clone(container)
         red_channel = container[0, ...]
         scaled_channel = self.inv_eps * (red_channel + 1)
@@ -86,12 +86,14 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
 
         one_mul = calculate_multiplier(red_channel, 1, inv_eps=self.inv_eps)
         zero_mul = calculate_multiplier(red_channel, 0, inv_eps=self.inv_eps)
-
+        one_addition = one_mul * one_rung
+        zero_addition = zero_mul * zero_rung
+        # TODO: very slow
         for bit_value, pos in zip(message, key):
             if bit_value == 1:
-                red_channel[pos] += one_mul[pos] * one_rung[pos]
+                red_channel[pos] += one_addition[pos]
             elif bit_value == 0:
-                red_channel[pos] += zero_mul[pos] * zero_rung[pos]
+                red_channel[pos] += zero_addition[pos]
 
         return container
 

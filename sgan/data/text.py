@@ -13,6 +13,8 @@ class TextLoader:
             text = f.read()
 
         parsed_text = re.sub(r'\s+', ' ', text, flags=re.M)
+        # dirty fix
+        parsed_text = "".join(re.split("[^a-zA-Z0-9.!?… ]*", parsed_text))
         sentences = []
         for s in re.split(r'(?<=[.!?…]) ', parsed_text):
             if min_size < len(s) < max_size:

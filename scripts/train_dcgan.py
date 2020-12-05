@@ -12,7 +12,7 @@ from typing import Sequence, Callable
 from sgan.train.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
 from sgan.data import CelebDataset, BatchIterator
-from sgan.train.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
+from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
 
 
 def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_noise_channels: int
