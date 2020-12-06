@@ -1,20 +1,23 @@
 import os
 import argparse
+import numpy as np
 
 from tqdm import tqdm
-from torch.nn import functional as F
+from dpipe.io import save_numpy
 from typing import Sequence, Iterator
+from dpipe.train.logging import TBLogger
+
+from torch.nn import functional as F
 from torch.optim import Adam, Optimizer
 
 from sgan.utils import *
-from sgan.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
 from sgan.data import CelebDataset, TextLoader, BatchIterator
 from sgan.stegonagraphy import SigmoidTorchEncoder, generate_random_key, bytes_to_bits
 
 
 def run_experiment(*, device, download: bool, data_path: str, experiment_path: str, n_epoch: int, batch_size: int,
-                   n_noise_channels: int, embedding_fidelity: float, loss_balancer: float):
+                   n_noise_channels: int, embedding_fidelity: float, loss_balancer: float, start_stego_epoch: int):
     # path to save everything related to experiment
     data_path = Path(data_path).expanduser()
     experiment_path = Path(experiment_path).expanduser()
@@ -32,7 +35,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
     message_analyzer = Discriminator().to(device)
     generator = Generator(in_channels=n_noise_channels).to(device)
 
-    optimizer_parameters = dict(lr=2e-4, betas=(0.5, 0.99))
+    optimizer_parameters = dict(lr=1e-5, betas=(0.5, 0.99))
     generator_opt = Adam(generator.parameters(), **optimizer_parameters)
     image_analyser_opt = Adam(image_analyser.parameters(), **optimizer_parameters)
     message_analyser_opt = Adam(message_analyzer.parameters(), **optimizer_parameters)
@@ -63,6 +66,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
         image_iterator=train_iterator,
         text_iterator=text_iterator,
         n_epoch=n_epoch,
+        start_stego_epoch=start_stego_epoch,
         n_noise_channels=n_noise_channels,
         loss_balancer=loss_balancer,
         logger=logger,
@@ -74,8 +78,8 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
 def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analyser: nn.Module,
                generator_opt: Optimizer, image_analyser_opt: Optimizer, message_analyser_opt: Optimizer,
                encoder: SigmoidTorchEncoder, image_iterator: BatchIterator, text_iterator: Iterator, device: str,
-               n_epoch: int, n_noise_channels: int, loss_balancer: float, callbacks: Sequence[Callable],
-               logger: TBLogger):
+               n_epoch: int, n_noise_channels: int, start_stego_epoch: int, loss_balancer: float,
+               callbacks: Sequence[Callable], logger: TBLogger):
     generator = generator.to(device)
     image_analyser = image_analyser.to(device)
     message_analyser = message_analyser.to(device)
@@ -111,32 +115,32 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                 # rescale gradients
                 scale_gradients(generator, loss_balancer)
                 generator_opt.step()
-                # TODO: start after several epochs?
-                # start second part
-                containers = generator(generate_noise(batch_size, n_noise_channels, device))
-                labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
-                encoded_images = []
-                for container, label in zip(containers, labels):
-                    label = np.random.choice([0, 1])
-                    if label == 1:
-                        msg = bytes_to_bits(next(text_iterator))
-                        key = generate_random_key(container.shape[1:], len(msg))
-                        container = encoder.encode(container, msg, key)
-                    encoded_images.append(container)
+                if epoch > start_stego_epoch:
+                    # start second part
+                    containers = generator(generate_noise(batch_size, n_noise_channels, device))
+                    labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
+                    encoded_images = []
+                    for container, label in zip(containers, labels):
+                        label = np.random.choice([0, 1])
+                        if label == 1:
+                            msg = bytes_to_bits(next(text_iterator))
+                            key = generate_random_key(container.shape[1:], len(msg))
+                            container = encoder.encode(container, msg, key)
+                        encoded_images.append(container)
 
-                encoded_images = torch.stack(encoded_images)
-                labels = torch.from_numpy(labels).float()
-                # train analyser
-                message_analyser_opt.zero_grad()
-                message_analyser_losses.append(
-                    process_batch(encoded_images.detach(), labels, message_analyser, criterion))
-                message_analyser_opt.step()
-                # train generator again
-                labels = torch.logical_xor(labels, torch.tensor(1)).float()
-                generator_opt.zero_grad()
-                generator_message_losses.append(process_batch(encoded_images, labels, message_analyser, criterion))
-                scale_gradients(generator, 1 - loss_balancer)
-                generator_opt.step()
+                    encoded_images = torch.stack(encoded_images)
+                    labels = torch.from_numpy(labels).float()
+                    # train analyser
+                    message_analyser_opt.zero_grad()
+                    message_analyser_losses.append(
+                        process_batch(encoded_images.detach(), labels, message_analyser, criterion))
+                    message_analyser_opt.step()
+                    # train generator again
+                    labels = torch.logical_xor(labels, torch.tensor(1)).float()
+                    generator_opt.zero_grad()
+                    generator_message_losses.append(process_batch(encoded_images, labels, message_analyser, criterion))
+                    scale_gradients(generator, 1 - loss_balancer)
+                    generator_opt.step()
 
             # run callbacks
             for callback in callbacks:
@@ -158,10 +162,11 @@ def main():
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--batch_size', default=256, type=int)
-    parser.add_argument('--n_epoch', default=25, type=int)
-    parser.add_argument('--n_noise_channels', default=64, type=int)
-    parser.add_argument('--loss_balancer', default=0.85, type=float)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--n_epoch', default=30, type=int)
+    parser.add_argument('--start_stego_epoch', default=2, type=int)
+    parser.add_argument('--n_noise_channels', default=128, type=int)
+    parser.add_argument('--loss_balancer', default=0.9, type=float)
     parser.add_argument('--embedding_fidelity', default=10, type=float)
     parser.add_argument('--data_path', default='~/celeba', type=str)
 

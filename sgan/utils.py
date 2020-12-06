@@ -1,14 +1,9 @@
 import torch
-import functools
-import numpy as np
 
 from torch import nn
-from math import ceil
 from pathlib import Path
-from gzip import GzipFile
 
 from typing import Callable, Union
-from joblib import Parallel, delayed
 
 
 def get_device(x):
@@ -58,19 +53,3 @@ PathLike = Union[Path, str]
 
 def save_torch(o: nn.Module, path: PathLike):
     torch.save(o.state_dict(), path)
-
-
-def save_numpy(value, path: PathLike, *, allow_pickle: bool = True, fix_imports: bool = True, compression: int = None):
-    if compression is not None:
-        with GzipFile(path, 'wb', compresslevel=compression) as file:
-            return save_numpy(value, file, allow_pickle=allow_pickle, fix_imports=fix_imports)
-
-    np.save(path, value, allow_pickle=allow_pickle, fix_imports=fix_imports)
-
-
-def load_numpy(path: PathLike, *, allow_pickle: bool = True, fix_imports: bool = True, decompress: bool = False):
-    if decompress:
-        with GzipFile(path, 'rb') as file:
-            return load_numpy(file, allow_pickle=allow_pickle, fix_imports=fix_imports)
-
-    return np.load(path, allow_pickle=allow_pickle, fix_imports=fix_imports)

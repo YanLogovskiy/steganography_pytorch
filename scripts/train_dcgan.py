@@ -8,11 +8,12 @@ from pathlib import Path
 from torch.optim import Adam
 from torch.nn import functional as F
 from typing import Sequence, Callable
+from dpipe.io import save_numpy
+from dpipe.train.logging import TBLogger
 
-from sgan.train.loggers import TBLogger
 from sgan.modules import Generator, Discriminator
 from sgan.data import CelebDataset, BatchIterator
-from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_numpy, save_torch
+from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_torch
 
 
 def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_noise_channels: int

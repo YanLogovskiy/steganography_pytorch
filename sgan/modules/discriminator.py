@@ -1,31 +1,28 @@
-from torch import nn
-from typing import Sequence
-
-from sgan.modules.base import ForwardPreactivation
+from sgan.modules.base import *
 
 
 class Discriminator(nn.Module):
-    def __init__(self, *, in_channels=3, base_block: nn.Module = None, structure: Sequence = None,
-                 kernel_size=4, stride=2, padding=1, bias=False, dilation=1):
+    def __init__(self, *, in_channels=3):
         super().__init__()
-        convolution_params = dict(
-            kernel_size=kernel_size, stride=stride,
-            padding=padding, dilation=dilation
+        downsample_params = dict(
+            kernel_size=4, stride=2,
+            padding=1, dilation=1,
+            bias=False
         )
-        structure = structure or [64, 128, 256, 512]
-        if base_block is None:
-            def base_block(in_c, out_c):
-                return nn.Sequential(
-                    ForwardPreactivation(in_c, out_c, activation_module=nn.LeakyReLU, **convolution_params, bias=bias))
-
-        self.input = nn.Sequential(nn.Conv2d(in_channels, structure[0], **convolution_params, bias=bias),
-                                   nn.LeakyReLU())
-        self.core = nn.Sequential(*(base_block(in_c, out_c) for in_c, out_c in zip(structure, structure[1:])),
-                                  nn.LeakyReLU())
-        self.output = nn.Sequential(nn.Conv2d(structure[-1], 1, 4, 1, 0, bias=bias))
+        downsample_block = partial(ForwardPreactivation, activation_module=partial(nn.LeakyReLU, 0.15),
+                                   **downsample_params)
+        self.main = nn.Sequential(
+            nn.Conv2d(in_channels, 64, **downsample_params),
+            nn.LeakyReLU(0.15),
+            downsample_block(64, 128),
+            downsample_block(128, 256),
+            ResBlock2d(256, 256, conv_module=nn.Conv2d),
+            downsample_block(256, 512),
+            nn.LeakyReLU(0.15),
+            ForwardPreactivation(512, 1, kernel_size=4, stride=1,
+                                 padding=0, dilation=1, bias=True),
+        )
 
     def forward(self, x):
-        x = self.input(x)
-        x = self.core(x)
-        x = self.output(x)
+        x = self.main(x)
         return x
