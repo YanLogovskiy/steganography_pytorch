@@ -6,12 +6,11 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from torch.optim import Adam
-from torch.nn import functional as F
 from typing import Sequence, Callable
 from dpipe.io import save_numpy
 from dpipe.train.logging import TBLogger
 
-from sgan.modules import Generator, Discriminator
+from sgan.modules import *
 from sgan.data import CelebDataset, BatchIterator
 from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_torch
 
@@ -28,6 +27,8 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     # models
     generator = Generator(in_channels=n_noise_channels).to(device)
     discriminator = Discriminator().to(device)
+    generator.apply(init_weights)
+    discriminator.apply(init_weights)
 
     # TODO: remove hardcode
     optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
@@ -42,12 +43,13 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
         save_numpy(predict, experiment_path / prefix / f'{epoch}.npy.gz', compression=compression)
 
     def save_models(epoch):
-        save_torch(generator, experiment_path / 'generator')
-        save_torch(discriminator, experiment_path / 'discriminator')
+        os.makedirs(experiment_path / f'generator/', exist_ok=True)
+        os.makedirs(experiment_path / f'discriminator', exist_ok=True)
+        save_torch(generator, experiment_path / f'generator/generator_{epoch}')
+        save_torch(discriminator, experiment_path / f'discriminator/discriminator_{epoch}')
 
     logger = TBLogger(experiment_path / 'logs')
     epoch_callbacks = [predict_on_fixed_noise, save_models]
-    batch_callbacks = []
 
     train_dcgan(
         generator=generator,
@@ -115,9 +117,9 @@ def main():
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--batch_size', default=256, type=int)
-    parser.add_argument('--n_epoch', default=25, type=int)
-    parser.add_argument('--n_noise_channels', default=64, type=int)
+    parser.add_argument('--batch_size', default=128, type=int)
+    parser.add_argument('--n_epoch', default=30, type=int)
+    parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--data_path', default='~/celeba', type=str)
 
     args = parser.parse_args()

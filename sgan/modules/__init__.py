@@ -1,4 +1,4 @@
 # facade
 
-from .discriminator import Discriminator
-from .generator import Generator
+from .models import *
+from .base import *

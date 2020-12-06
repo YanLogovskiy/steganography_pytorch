@@ -5,13 +5,11 @@ import numpy as np
 from tqdm import tqdm
 from dpipe.io import save_numpy
 from typing import Sequence, Iterator
+from torch.optim import Adam, Optimizer
 from dpipe.train.logging import TBLogger
 
-from torch.nn import functional as F
-from torch.optim import Adam, Optimizer
-
 from sgan.utils import *
-from sgan.modules import Generator, Discriminator
+from sgan.modules import *
 from sgan.data import CelebDataset, TextLoader, BatchIterator
 from sgan.stegonagraphy import SigmoidTorchEncoder, generate_random_key, bytes_to_bits
 
@@ -34,6 +32,9 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
     image_analyser = Discriminator().to(device)
     message_analyzer = Discriminator().to(device)
     generator = Generator(in_channels=n_noise_channels).to(device)
+    generator.apply(init_weights)
+    image_analyser.apply(init_weights)
+    message_analyzer.apply(init_weights)
 
     optimizer_parameters = dict(lr=1e-5, betas=(0.5, 0.99))
     generator_opt = Adam(generator.parameters(), **optimizer_parameters)
@@ -48,9 +49,13 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
         save_numpy(predict, experiment_path / prefix / f'{epoch}.npy.gz', compression=compression)
 
     def save_models(epoch):
-        save_torch(generator, experiment_path / 'generator')
-        save_torch(image_analyser, experiment_path / 'discriminator')
-        save_torch(message_analyzer, experiment_path / 'stego_analyser')
+        os.makedirs(experiment_path / f'generator', exist_ok=True)
+        os.makedirs(experiment_path / f'image_analyser', exist_ok=True)
+        os.makedirs(experiment_path / f'message_analyser', exist_ok=True)
+
+        save_torch(generator, experiment_path / f'generator/generator_{epoch}')
+        save_torch(image_analyser, experiment_path / f'image_analyser/image_analyser_{epoch}')
+        save_torch(message_analyzer, experiment_path / f'message_analyser/message_analyser_{epoch}')
 
     logger = TBLogger(experiment_path / 'logs')
     epoch_callbacks = [predict_on_fixed_noise, save_models]
@@ -162,10 +167,10 @@ def main():
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--n_epoch', default=30, type=int)
     parser.add_argument('--start_stego_epoch', default=2, type=int)
-    parser.add_argument('--n_noise_channels', default=128, type=int)
+    parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--loss_balancer', default=0.9, type=float)
     parser.add_argument('--embedding_fidelity', default=10, type=float)
     parser.add_argument('--data_path', default='~/celeba', type=str)
