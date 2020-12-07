@@ -36,7 +36,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
     image_analyser.apply(init_weights)
     message_analyzer.apply(init_weights)
 
-    optimizer_parameters = dict(lr=1e-5, betas=(0.5, 0.99))
+    optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
     generator_opt = Adam(generator.parameters(), **optimizer_parameters)
     image_analyser_opt = Adam(image_analyser.parameters(), **optimizer_parameters)
     message_analyser_opt = Adam(message_analyzer.parameters(), **optimizer_parameters)
@@ -126,7 +126,6 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                     labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
                     encoded_images = []
                     for container, label in zip(containers, labels):
-                        label = np.random.choice([0, 1])
                         if label == 1:
                             msg = bytes_to_bits(next(text_iterator))
                             key = generate_random_key(container.shape[1:], len(msg))
@@ -171,7 +170,7 @@ def main():
     parser.add_argument('--n_epoch', default=30, type=int)
     parser.add_argument('--start_stego_epoch', default=2, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
-    parser.add_argument('--loss_balancer', default=0.9, type=float)
+    parser.add_argument('--loss_balancer', default=0.85, type=float)
     parser.add_argument('--embedding_fidelity', default=10, type=float)
     parser.add_argument('--data_path', default='~/celeba', type=str)
 

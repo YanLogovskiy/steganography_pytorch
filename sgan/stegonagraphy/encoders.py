@@ -71,7 +71,6 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
     def __init__(self, *args, beta=5, inv_eps=128, **kwargs):
         self.inv_eps = inv_eps
         self.beta = beta
-
         super().__init__(*args, **kwargs)
 
     def encode(self, container: torch.tensor, message: np.ndarray, key: np.ndarray):
