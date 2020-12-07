@@ -1,6 +1,7 @@
 import os
 import argparse
 import numpy as np
+import sklearn
 
 from tqdm import tqdm
 from dpipe.io import save_numpy
@@ -10,7 +11,7 @@ from dpipe.train.logging import TBLogger
 
 from sgan.utils import *
 from sgan.modules import *
-from sgan.data import CelebDataset, TextLoader, BatchIterator
+from sgan.data import CelebDataset, TextLoader, BatchIterator, split_data
 from sgan.stegonagraphy import SigmoidTorchEncoder, generate_random_key, bytes_to_bits
 
 
@@ -22,8 +23,11 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     experiment_path = Path(experiment_path).expanduser()
     # dataset and batch iterator
     dataset = CelebDataset(root=data_path, download=download)
-    indices = list(range(len(dataset)))
-    train_iterator = BatchIterator(dataset, indices, batch_size=batch_size)
+    train_indices, val_indices, test_indices = split_data(dataset, train_size=0.6, val_size=0.2, test_size=0.2)
+    train_iterator = BatchIterator(dataset, train_indices, batch_size=batch_size)
+    val_iterator = BatchIterator(dataset, val_indices, batch_size=batch_size)
+    # TODO: save test_indices
+    test_iterator = BatchIterator(dataset, test_indices, batch_size=batch_size)
     # text loader and encoder
     encoder = SigmoidTorchEncoder(beta=embedding_fidelity)
     text_loader = TextLoader()
@@ -32,12 +36,12 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     stegoanalyser = Discriminator().to(device)
     stegoanalyser.apply(init_weights)
     # trained generators: from dcgan and sgan
-    generator_dcgan = Generator().to(device)
-    generator_dcgan.load_state_dict(torch.load(dcgan_experiment_path
-                                                / f'generator/generator_{generator_load_epoch}'))
-    generator_sgan = Generator().to(device)
-    generator_sgan.load_state_dict(torch.load(sgan_experiment_path
-                                              / f'generator/generator_{generator_load_epoch}'))
+    # generator_dcgan = Generator().to(device)
+    # generator_dcgan.load_state_dict(torch.load(dcgan_experiment_path
+    #                                             / f'generator/generator_{generator_load_epoch}'))
+    # generator_sgan = Generator().to(device)
+    # generator_sgan.load_state_dict(torch.load(sgan_experiment_path
+    #                                           / f'generator/generator_{generator_load_epoch}'))
 
     optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
     stegoanalyser_opt = Adam(stegoanalyser.parameters(), **optimizer_parameters)
@@ -55,8 +59,9 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     train_on_real_img(
         stegoanalyser=stegoanalyser,
         train_iterator=train_iterator,
+        val_iterator=val_iterator,
+        test_iterator = test_iterator,
         text_iterator=text_iterator,
-        device=device,
         n_epoch=n_epoch,
         stegoanalyser_opt=stegoanalyser_opt,
         callbacks=epoch_callbacks,
@@ -66,11 +71,12 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     # train on generator_dcgan synth images: with/without messages
     # train on generator_sgan synth images: with/withput messages
 
-def train_on_real_img(*, stegoanalyser: nn.Module, train_iterator: BatchIterator, text_iterator: Iterator
-                      , device: str, n_epoch: int, stegoanalyser_opt: Optimizer
+def train_on_real_img(*, stegoanalyser: nn.Module, train_iterator: BatchIterator, val_iterator: BatchIterator
+                      , test_iterator: BatchIterator, text_iterator: Iterator
+                      , n_epoch: int, stegoanalyser_opt: Optimizer
                       , callbacks: Sequence[Callable] = None, logger: TBLogger
                       , encoder: SigmoidTorchEncoder):
-    stegoanalyser = stegoanalyser.to(device)
+
     criterion = F.binary_cross_entropy_with_logits
 
     callbacks = callbacks or []
@@ -97,6 +103,33 @@ def train_on_real_img(*, stegoanalyser: nn.Module, train_iterator: BatchIterator
                 stegoanalyser_losses.append(
                     process_batch(encoded_images.detach(), labels, stegoanalyser, criterion))
                 stegoanalyser_opt.step()
+
+            #run callbacks
+            for callbacks in callbacks:
+                callbacks(epoch)
+
+            losses = {'Stegoanalyser loss': np.mean(stegoanalyser_losses)}
+            logger.policies(losses, epoch)
+
+        with val_iterator as iterator:
+            for real_batch, _ in iterator:
+                batch_size = len(real_batch)
+
+                labels = np.random.choice([0, 1], batch_size)
+                encoded_images = []
+                for image, label in zip(real_batch, labels):
+                    if label == 1:
+                        msg = bytes_to_bits(next(text_iterator))
+                        key = generate_random_key(image.shape[1:], len(msg))
+                        image = encoder.encode(image, msg, key)
+                    encoded_images.append(image)
+
+                encoded_images = torch.stack(encoded_images)
+                # evaluate stegoanalyzer
+                stegoanalyser.eval()
+                out = stegoanalyser.forward(encoded_images).detach().numpy()
+                accuracy_score = sklearn.metrics.accuracy_score(labels, out)
+                print(f'validation accuracy score {accuracy_score}')
 
             #run callbacks
             for callbacks in callbacks:
