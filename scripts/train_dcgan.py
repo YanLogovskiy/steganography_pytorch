@@ -11,7 +11,7 @@ from dpipe.io import save_numpy
 from dpipe.train.logging import TBLogger
 
 from sgan.modules import *
-from sgan.data import CelebDataset, BatchIterator
+from sgan.data import CelebDataset, DataBatchIterator
 from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_torch
 
 
@@ -23,7 +23,7 @@ def run_experiment(*, device, download: bool, n_epoch: int, batch_size: int, n_n
     # dataset and batch iterator
     dataset = CelebDataset(root=data_path, download=download)
     indices = list(range(len(dataset)))
-    train_iterator = BatchIterator(dataset, indices, batch_size=batch_size)
+    train_iterator = DataBatchIterator(dataset, indices, batch_size=batch_size)
     # models
     generator = Generator(in_channels=n_noise_channels).to(device)
     discriminator = Discriminator().to(device)

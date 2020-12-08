@@ -39,6 +39,8 @@ def generate_noise(batch_size, n_channels, device):
 
 
 def inference_step(inputs, model):
+    model.eval()
+    inputs = inputs.to(get_device(model))
     with torch.no_grad():
         return model(inputs)
 

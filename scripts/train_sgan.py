@@ -10,7 +10,7 @@ from dpipe.train.logging import TBLogger
 
 from sgan.utils import *
 from sgan.modules import *
-from sgan.data import CelebDataset, TextLoader, BatchIterator
+from sgan.data import CelebDataset, TextLoader, DataBatchIterator
 from sgan.stegonagraphy import SigmoidTorchEncoder, generate_random_key, bytes_to_bits
 
 
@@ -23,7 +23,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
     # dataset and image iterator
     dataset = CelebDataset(root=data_path, download=download)
     indices = list(range(len(dataset)))
-    train_iterator = BatchIterator(dataset, indices, batch_size=batch_size)
+    train_iterator = DataBatchIterator(dataset, indices, batch_size=batch_size)
     # text loader and encoder
     encoder = SigmoidTorchEncoder(beta=embedding_fidelity)
     text_loader = TextLoader()
@@ -82,7 +82,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
 
 def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analyser: nn.Module,
                generator_opt: Optimizer, image_analyser_opt: Optimizer, message_analyser_opt: Optimizer,
-               encoder: SigmoidTorchEncoder, image_iterator: BatchIterator, text_iterator: Iterator, device: str,
+               encoder: SigmoidTorchEncoder, image_iterator: DataBatchIterator, text_iterator: Iterator, device: str,
                n_epoch: int, n_noise_channels: int, start_stego_epoch: int, loss_balancer: float,
                callbacks: Sequence[Callable], logger: TBLogger):
     generator = generator.to(device)
@@ -167,7 +167,7 @@ def main():
     parser.add_argument('--no-download', dest='download', action='store_false')
 
     parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--n_epoch', default=30, type=int)
+    parser.add_argument('--n_epoch', default=50, type=int)
     parser.add_argument('--start_stego_epoch', default=2, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--loss_balancer', default=0.85, type=float)
