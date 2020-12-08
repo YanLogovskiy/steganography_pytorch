@@ -1,5 +1,43 @@
+import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
+
+class Stegoanalyser(nn.Module):
+    def __init__(self, *, in_channels=3):
+        super().__init__()
+        # Input Dimension: (nc) x 64 x 64
+        weights = 1 / 12 * torch.tensor([
+            [-1., 2., -2., 2, -1],
+            [2., -6, 8, -6, 2],
+            [-2., 8., -12, 8, -2],
+            [2., -6, 8, -6, 2],
+            [-1., 2., -2., 2, -1]])
+        self.weights = weights.view(1, 1, 5, 5).repeat(3, in_channels, 1, 1)
+
+        self.conv1 = nn.Conv2d(in_channels, 10, 7)
+        self.conv2 = nn.Conv2d(10, 20, 5)
+        self.conv3 = nn.Conv2d(20, 30, 3)
+        self.conv4 = nn.Conv2d(30, 40, 3)
+        self.mp1 = nn.MaxPool2d(4, 4, padding=1)
+        self.mp2 = nn.MaxPool2d(2, 2)
+        self.dense1 = nn.Linear(1000, 100)
+        self.dense2 = nn.Linear(100, 1)
+
+    def forward(self, x):
+        self.weights = self.weights.to(x)
+        x = F.relu(F.conv2d(x, self.weights, padding=2))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = self.mp1(x)
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = self.mp2(x)
+        x = x.view(x.size(0), -1)
+        x = F.tanh(self.dense1(x))
+        x = self.dense2(x).view(x.size(0), -1)
+        x = x[..., None, None]
+        return x
 
 
 class Discriminator(nn.Module):
@@ -20,10 +58,10 @@ class Discriminator(nn.Module):
         self.conv5 = nn.Conv2d(512, 1, 4, 1, 0, bias=False)
 
     def forward(self, x):
-        x = F.leaky_relu(self.conv1(x), 0.2, True)
-        x = F.leaky_relu(self.bn2(self.conv2(x)), 0.2, True)
-        x = F.leaky_relu(self.bn3(self.conv3(x)), 0.2, True)
-        x = F.leaky_relu(self.bn4(self.conv4(x)), 0.2, True)
+        x = F.leaky_relu(self.conv1(x), 0.2)
+        x = F.leaky_relu(self.bn2(self.conv2(x)), 0.2)
+        x = F.leaky_relu(self.bn3(self.conv3(x)), 0.2)
+        x = F.leaky_relu(self.bn4(self.conv4(x)), 0.2)
         x = self.conv5(x)
         return x
 

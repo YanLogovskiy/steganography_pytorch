@@ -1,15 +1,14 @@
 import os
-import torch
 import argparse
 import numpy as np
 
 from tqdm import tqdm
-from pathlib import Path
 from torch.optim import Adam
-from typing import Sequence, Callable
+from typing import Sequence
 from dpipe.io import save_numpy
 from dpipe.train.logging import TBLogger
 
+from sgan.utils import *
 from sgan.modules import *
 from sgan.data import CelebDataset, DataBatchIterator
 from sgan.utils import process_batch, generate_noise, inference_step, to_numpy, save_torch
@@ -79,6 +78,7 @@ def train_dcgan(*, generator, discriminator, train_iterator, device, n_epoch, ge
 
         with train_iterator as iterator:
             for real_batch, _ in iterator:
+                real_batch = transform_gan(real_batch)
                 batch_size = len(real_batch)
                 discriminator_opt.zero_grad()
                 # train discriminator on real

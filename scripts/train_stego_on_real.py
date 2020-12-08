@@ -1,7 +1,7 @@
 import os
 import argparse
-import numpy as np
 import sklearn
+import numpy as np
 
 from tqdm import tqdm
 from dpipe.io import save
@@ -23,7 +23,6 @@ def run_on_real(*, device, download: bool, n_epoch: int, batch_size: int, data_p
     # dataset and batch iterator: real images
     dataset = CelebDataset(root=data_path, download=download)
     train_indices, val_indices, test_indices = split_data(dataset, train_size=0.6, val_size=0.1, test_size=0.3)
-    save(test_indices, experiment_path / 'test_indices.json')
     train_iterator = DataBatchIterator(dataset, train_indices, batch_size=batch_size)
     val_iterator = DataBatchIterator(dataset, val_indices, batch_size=batch_size)
     # save indices for reproducibility
@@ -33,9 +32,9 @@ def run_on_real(*, device, download: bool, n_epoch: int, batch_size: int, data_p
     text_loader = TextLoader()
     text_iterator = text_loader.create_generator()
     # model
-    stegoanalyser = Discriminator().to(device)
-    stegoanalyser.apply(init_weights)
-    optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
+    stegoanalyser = Stegoanalyser().to(device)
+    # stegoanalyser.apply(init_weights)
+    optimizer_parameters = dict(lr=1e-4, betas=(0.9, 0.99))
     stegoanalyser_opt = Adam(stegoanalyser.parameters(), **optimizer_parameters)
 
     def save_models(epoch):
@@ -79,7 +78,8 @@ def train_stego(*, stegoanalyser: nn.Module,
                     if label == 1:
                         msg = bytes_to_bits(next(text_iterator))
                         key = generate_random_key(image.shape[1:], len(msg))
-                        image = encoder.encode(image, msg, key)
+                        image = encoder.encode(transform_encoder(image), msg, key)
+                        image = inverse_transform_encoder(image)
                     encoded_images.append(image)
 
                 encoded_images = torch.stack(encoded_images)
@@ -101,7 +101,8 @@ def train_stego(*, stegoanalyser: nn.Module,
                     if label == 1:
                         msg = bytes_to_bits(next(text_iterator))
                         key = generate_random_key(image.shape[1:], len(msg))
-                        image = encoder.encode(image, msg, key)
+                        image = encoder.encode(transform_encoder(image), msg, key)
+                        image = inverse_transform_encoder(image)
                     encoded_images.append(image)
 
                 encoded_images = torch.stack(encoded_images)
@@ -131,8 +132,8 @@ def main():
     parser.add_argument('--download', dest='download', action='store_true')
     parser.add_argument('--no-download', dest='download', action='store_false')
 
-    parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--n_epoch', default=5, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--n_epoch', default=15, type=int)
     parser.add_argument('--data_path', default='~/celeba', type=str)
     parser.add_argument('--embedding_fidelity', default=10000, type=float)
 

@@ -52,11 +52,11 @@ def calculate_multiplier(x: torch.tensor, bit_value, inv_eps: float = 128):
     eps = 1 / inv_eps
     total_mask = np.random.choice([-1, 1], np.prod(x.shape)).reshape(x.shape)
     if bit_value == 1:
-        plus_eps_mask = (x >= -1) & (x < -1 + eps)
+        plus_eps_mask = (x >= -1) & (x <= -1 + eps)
         plus_eps_mask = to_numpy(plus_eps_mask)
         total_mask[plus_eps_mask] = 1
     elif bit_value == 0:
-        minus_eps_mask = (x > 1 - eps) & (x <= 1)
+        minus_eps_mask = (x >= 1 - eps) & (x <= 1)
         minus_eps_mask = to_numpy(minus_eps_mask)
         total_mask[minus_eps_mask] = -1
 

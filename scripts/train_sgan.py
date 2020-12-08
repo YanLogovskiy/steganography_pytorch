@@ -30,7 +30,7 @@ def run_experiment(*, device, download: bool, data_path: str, experiment_path: s
     text_iterator = text_loader.create_generator()
     # create models (both discriminator models have similar structure)
     image_analyser = Discriminator().to(device)
-    message_analyzer = Discriminator().to(device)
+    message_analyzer = Stegoanalyser().to(device)
     generator = Generator(in_channels=n_noise_channels).to(device)
     generator.apply(init_weights)
     image_analyser.apply(init_weights)
@@ -102,6 +102,7 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
         with image_iterator as iterator:
             for real_batch, _ in iterator:
                 batch_size = len(real_batch)
+                real_batch = transform_gan(real_batch)
                 image_analyser_opt.zero_grad()
                 # train discriminator on real
                 real_images_target = torch.ones(batch_size, 1, 1, 1)
@@ -123,13 +124,20 @@ def train_sgan(*, generator: nn.Module, image_analyser: nn.Module, message_analy
                 if epoch > start_stego_epoch:
                     # start second part
                     containers = generator(generate_noise(batch_size, n_noise_channels, device))
+                    # to [0...255]
+                    containers = inverse_transform_gan(containers)
+
                     labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
                     encoded_images = []
                     for container, label in zip(containers, labels):
                         if label == 1:
                             msg = bytes_to_bits(next(text_iterator))
                             key = generate_random_key(container.shape[1:], len(msg))
+                            # to [-1, 1]
+                            container = transform_encoder(container)
                             container = encoder.encode(container, msg, key)
+                            # to [0...255]
+                            container = inverse_transform_encoder(container)
                         encoded_images.append(container)
 
                     encoded_images = torch.stack(encoded_images)
@@ -167,7 +175,7 @@ def main():
     parser.add_argument('--no-download', dest='download', action='store_false')
 
     parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--n_epoch', default=50, type=int)
+    parser.add_argument('--n_epoch', default=30, type=int)
     parser.add_argument('--start_stego_epoch', default=2, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--loss_balancer', default=0.85, type=float)

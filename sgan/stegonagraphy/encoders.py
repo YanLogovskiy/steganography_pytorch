@@ -94,7 +94,7 @@ class SigmoidTorchEncoder(LeastSignificantBitEncoder):
         # embed message
         red_channel[one_pos[:, 0], one_pos[:, 1]] += one_addition[one_pos[:, 0], one_pos[:, 1]]
         red_channel[zero_pos[:, 0], zero_pos[:, 1]] += zero_addition[zero_pos[:, 0], zero_pos[:, 1]]
-        return container
+        return torch.clamp(container, -1, 1)
 
     def decode(self, container: torch.tensor, key: torch.tensor):
         assert len(container.shape) == 3

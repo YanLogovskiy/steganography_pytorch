@@ -34,7 +34,7 @@ def run_on_generated(*, device, n_epoch: int, batch_size: int, batches_per_epoch
     text_loader = TextLoader()
     text_iterator = text_loader.create_generator()
     # model
-    stegoanalyser = Discriminator().to(device)
+    stegoanalyser = Stegoanalyser().to(device)
     stegoanalyser.apply(init_weights)
     optimizer_parameters = dict(lr=1e-4, betas=(0.5, 0.99))
     stegoanalyser_opt = Adam(stegoanalyser.parameters(), **optimizer_parameters)
@@ -74,13 +74,16 @@ def train_stego(*, stegoanalyser: nn.Module,
         with train_iterator as iterator:
             for batch in iterator:
                 batch_size = len(batch)
+                batch = inverse_transform_gan(batch)
                 labels = np.random.choice([0, 1], (batch_size, 1, 1, 1))
+
                 encoded_images = []
                 for image, label in zip(batch, labels):
                     if label == 1:
                         msg = bytes_to_bits(next(text_iterator))
                         key = generate_random_key(image.shape[1:], len(msg))
-                        image = encoder.encode(image, msg, key)
+                        image = encoder.encode(transform_encoder(image), msg, key)
+                        image = inverse_transform_encoder(image)
                     encoded_images.append(image)
 
                 encoded_images = torch.stack(encoded_images)
@@ -95,6 +98,7 @@ def train_stego(*, stegoanalyser: nn.Module,
         with val_iterator as iterator:
             accuracy = []
             for batch in iterator:
+                batch = inverse_transform_gan(batch)
                 batch_size = len(batch)
 
                 labels = np.random.choice([0, 1], batch_size)
@@ -103,7 +107,8 @@ def train_stego(*, stegoanalyser: nn.Module,
                     if label == 1:
                         msg = bytes_to_bits(next(text_iterator))
                         key = generate_random_key(image.shape[1:], len(msg))
-                        image = encoder.encode(image, msg, key)
+                        image = encoder.encode(transform_encoder(image), msg, key)
+                        image = inverse_transform_encoder(image)
                     encoded_images.append(image)
 
                 encoded_images = torch.stack(encoded_images)
@@ -134,7 +139,7 @@ def main():
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--batches_per_epoch', default=1000)
     parser.add_argument('--val_batches_per_epoch', default=10)
-    parser.add_argument('--n_epoch', default=5, type=int)
+    parser.add_argument('--n_epoch', default=15, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--embedding_fidelity', default=10000, type=float)
 

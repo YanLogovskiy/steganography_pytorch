@@ -1,6 +1,8 @@
 import torch
+import torchvision
 
 from torch import nn
+from torch.nn import functional as F
 from pathlib import Path
 
 from typing import Callable, Union
@@ -55,3 +57,28 @@ PathLike = Union[Path, str]
 
 def save_torch(o: nn.Module, path: PathLike):
     torch.save(o.state_dict(), path)
+
+
+mean = torch.tensor((0.5, 0.5, 0.5))
+std = torch.tensor((0.5, 0.5, 0.5))
+mean = mean.reshape(1, 3, 1, 1)
+std = std.reshape(1, 3, 1, 1)
+
+
+def transform_gan(x: torch.tensor):
+    x = x / 255
+    return (x - mean) / std
+
+
+def inverse_transform_gan(x: torch.tensor):
+    x = x * std + mean
+    x = x * 255
+    return x
+
+
+def transform_encoder(x: torch.tensor):
+    return x / 127.5 - 1
+
+
+def inverse_transform_encoder(x: torch.tensor):
+    return 127.5 * (x + 1)

@@ -15,15 +15,14 @@ from torchvision.transforms import transforms
 from sklearn.model_selection import train_test_split
 
 from sgan.utils import inference_step, generate_noise, get_device
-
+transforms.Normalize
 image_size = (64, 64)
-
 # transform
 default_transforms = transforms.Compose([
     transforms.Resize(image_size),
     transforms.CenterCrop(image_size),
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    transforms.Lambda(lambda x: x * 255)
 ])
 
 
