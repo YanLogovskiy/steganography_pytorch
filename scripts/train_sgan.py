@@ -176,7 +176,7 @@ def main():
 
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--n_epoch', default=30, type=int)
-    parser.add_argument('--start_stego_epoch', default=2, type=int)
+    parser.add_argument('--start_stego_epoch', default=1, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--loss_balancer', default=0.85, type=float)
     parser.add_argument('--embedding_fidelity', default=10, type=float)

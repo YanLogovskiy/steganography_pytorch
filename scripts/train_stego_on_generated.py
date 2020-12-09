@@ -137,9 +137,9 @@ def main():
     parser.add_argument('--model_path', type=str, required=True)
 
     parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--batches_per_epoch', default=1000)
-    parser.add_argument('--val_batches_per_epoch', default=10)
-    parser.add_argument('--n_epoch', default=15, type=int)
+    parser.add_argument('--batches_per_epoch', default=2000)
+    parser.add_argument('--val_batches_per_epoch', default=32)
+    parser.add_argument('--n_epoch', default=20, type=int)
     parser.add_argument('--n_noise_channels', default=100, type=int)
     parser.add_argument('--embedding_fidelity', default=10000, type=float)
 

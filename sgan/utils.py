@@ -66,12 +66,16 @@ std = std.reshape(1, 3, 1, 1)
 
 
 def transform_gan(x: torch.tensor):
+    m = mean.to(get_device(x))
+    s = std.to(get_device(x))
     x = x / 255
-    return (x - mean) / std
+    return (x - m) / s
 
 
 def inverse_transform_gan(x: torch.tensor):
-    x = x * std + mean
+    m = mean.to(get_device(x))
+    s = std.to(get_device(x))
+    x = x * s + m
     x = x * 255
     return x
 
